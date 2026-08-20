@@ -12,7 +12,7 @@ export function Header() {
   const pathname = usePathname();
 
   const navItems = [
-    { href: "/", label: "New Job", icon: PlusCircle },
+    { href: "/jobs", label: "New Job", icon: PlusCircle },
     { href: "/status", label: "Live Status", icon: Activity },
     { href: "/review", label: "Review & Verify", icon: ShieldCheck },
     { href: "/history", label: "History", icon: History },
