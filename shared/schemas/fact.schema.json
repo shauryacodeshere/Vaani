@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vaanireach.dev/schemas/fact.schema.json",
+  "title": "Fact",
+  "description": "An atomic, source-cited claim extracted from the notice by the Extraction Agent (L4). Mirrors backend/app/schemas.py::Fact. PRD section 6.1.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "claim", "source_span"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Fact identifier, e.g. \"f1\". Referenced by Scene.referenced_fact_ids and FactCheck.evidence_fact_id."
+    },
+    "claim": {
+      "type": "string",
+      "description": "One atomic claim. Never a compound sentence."
+    },
+    "type": {
+      "$ref": "#/$defs/FactType",
+      "default": "other"
+    },
+    "source_span": {
+      "type": "string",
+      "description": "Verbatim text this claim was extracted from. Mandatory — it is the evidence a reviewer clicks back to. A fact without a span is dropped by the extraction agent's hallucination guard."
+    }
+  },
+  "$defs": {
+    "FactType": {
+      "title": "FactType",
+      "description": "Mirrors backend/app/schemas.py::FactType. The four values in STRICT_FACT_TYPES (date, number, name, location) get exact-match verification rather than semantic similarity.",
+      "type": "string",
+      "enum": ["date", "number", "name", "policy", "location", "other"]
+    }
+  }
+}

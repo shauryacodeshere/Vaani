@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vaanireach.dev/schemas/fact_check.schema.json",
+  "title": "FactCheck",
+  "description": "The Verifier Agent's verdict on one claim, with the evidence it relied on. Mirrors backend/app/schemas.py::FactCheck. PRD section 6.3. Consumed by the L6 fact-level highlighting view.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["claim_id", "claim_text", "verdict"],
+  "properties": {
+    "claim_id": {
+      "type": "string",
+      "description": "The scene_id the claim came from."
+    },
+    "claim_text": {
+      "type": "string",
+      "description": "The exact claim that was checked."
+    },
+    "verdict": {
+      "$ref": "#/$defs/Verdict"
+    },
+    "confidence": {
+      "type": "number",
+      "description": "0.0 to 1.0. A deterministic strict-gate failure reports 0.95 without ever calling the LLM.",
+      "minimum": 0.0,
+      "maximum": 1.0,
+      "default": 0.0
+    },
+    "evidence_span": {
+      "type": "string",
+      "description": "The source text that supports or contradicts the claim. This is what the dashboard highlights in the source pane when a reviewer clicks the claim.",
+      "default": ""
+    },
+    "evidence_fact_id": {
+      "type": ["string", "null"],
+      "description": "Fact.id the evidence came from. Null when nothing was retrieved, which is the usual shape of an UNVERIFIABLE verdict.",
+      "default": null
+    },
+    "reason": {
+      "type": "string",
+      "description": "Why it failed. Fed back to the Script Writer verbatim on repair, and shown to the reviewer — so it must name the specific error, e.g. \"claim states 500000 but source says 50000\".",
+      "default": ""
+    },
+    "attempt": {
+      "type": "integer",
+      "description": "Which repair attempt produced this check. 1-indexed, capped at 3, after which the verdict escalates to NEEDS_HUMAN_REVIEW.",
+      "minimum": 1,
+      "default": 1
+    }
+  },
+  "$defs": {
+    "Verdict": {
+      "title": "Verdict",
+      "description": "Mirrors backend/app/schemas.py::Verdict. CONTRADICTED means the source actively disagrees; UNVERIFIABLE means the source is silent. Never collapse the two — a reviewer acts differently on each.",
+      "type": "string",
+      "enum": ["SUPPORTED", "CONTRADICTED", "UNVERIFIABLE", "NEEDS_HUMAN_REVIEW"]
+    }
+  }
+}

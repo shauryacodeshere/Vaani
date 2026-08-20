@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vaanireach.dev/schemas/script.schema.json",
+  "title": "Script",
+  "description": "A per-language narration script produced by the Script Writer Agent (L4). Mirrors backend/app/schemas.py::Script. PRD section 6.2.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["job_id", "language", "scenes"],
+  "properties": {
+    "script_id": {
+      "type": "string",
+      "description": "Generated server-side (scr_xxxxxxxx). Absent on a payload the client constructs."
+    },
+    "job_id": {
+      "type": "string",
+      "description": "The Job this script belongs to."
+    },
+    "language": {
+      "type": "string",
+      "description": "ISO 639-1 code: hi, mr, ta, bn, te, kn, ml, gu, pa, or."
+    },
+    "scenes": {
+      "type": "array",
+      "description": "Scenes in narration order. The writer targets 4-6.",
+      "items": { "$ref": "#/$defs/Scene" }
+    }
+  },
+  "$defs": {
+    "Scene": {
+      "title": "Scene",
+      "description": "One narrated beat. Mirrors backend/app/schemas.py::Scene.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scene_id", "text"],
+      "properties": {
+        "scene_id": {
+          "type": "string",
+          "description": "Stable across repair — a repaired scene keeps its id so the script reassembles in order. Also used as FactCheck.claim_id."
+        },
+        "text": {
+          "type": "string",
+          "description": "The narration for this scene. Spoken text, not prose."
+        },
+        "referenced_fact_ids": {
+          "type": "array",
+          "description": "Fact.id values this scene draws on. A scene referencing no fact is not allowed to exist.",
+          "items": { "type": "string" },
+          "default": []
+        },
+        "visual_keywords": {
+          "type": "array",
+          "description": "Concrete, depictable nouns feeding the L3 visual provider chain. Produced by the writer, not re-derived downstream.",
+          "items": { "type": "string" },
+          "default": []
+        }
+      }
+    }
+  }
+}

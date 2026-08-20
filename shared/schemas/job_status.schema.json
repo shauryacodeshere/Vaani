@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vaanireach.dev/schemas/job_status.schema.json",
+  "title": "JobStatus",
+  "description": "The L5 -> L6 WebSocket payload, pushed on every stage change and every per-language sub-stage change. Mirrors backend/app/schemas.py::JobStatus. PRD section 6.4.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["job_id", "stage", "languages", "progress"],
+  "properties": {
+    "job_id": {
+      "type": "string"
+    },
+    "stage": {
+      "$ref": "#/$defs/Stage",
+      "description": "The job's overall stage."
+    },
+    "languages": {
+      "type": "array",
+      "description": "Target languages requested for this job.",
+      "items": { "type": "string" }
+    },
+    "progress": {
+      "type": "object",
+      "description": "Per-language sub-stage, keyed by language code. Languages run in parallel, so values legitimately differ at the same instant — hi may be \"verifying\" while ta is still \"queued\". The dashboard must render each independently.",
+      "propertyNames": { "type": "string" },
+      "additionalProperties": { "type": "string" }
+    },
+    "error": {
+      "type": ["string", "null"],
+      "description": "Set only when stage is \"failed\". Human-readable.",
+      "default": null
+    }
+  },
+  "$defs": {
+    "Stage": {
+      "title": "Stage",
+      "description": "Mirrors backend/app/schemas.py::Stage. Movement between stages is constrained by the TRANSITIONS map in that file — notably verifying may loop back to scripting on repair, and pending_review may go back to scripting on reject.",
+      "type": "string",
+      "enum": [
+        "queued",
+        "extracting",
+        "scripting",
+        "verifying",
+        "generating_media",
+        "assembling",
+        "pending_review",
+        "approved",
+        "rejected",
+        "failed"
+      ]
+    }
+  }
+}
