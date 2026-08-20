@@ -1,0 +1,21 @@
+# OS
+.DS_Store
+._*
+Thumbs.db
+
+# Editors
+.vscode/
+.idea/
+*.swp
+
+# Secrets — backend/.gitignore also covers these
+.env
+.env.*
+!.env.example
+
+# Generated media / pipeline output
+output/
+
+# Node (frontend/ — Shaurya's scaffold will add its own too)
+node_modules/
+.next/
