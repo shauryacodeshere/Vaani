@@ -128,3 +128,23 @@
     @apply font-sans;
   }
 }
+
+/* Indic Script Typography & Line-Height Standards */
+.font-indic-devanagari {
+  font-family: var(--font-geist-sans), "Noto Sans Devanagari", "Kohinoor Devanagari", "Mangal", "Lohit Devanagari", system-ui, sans-serif;
+  line-height: 1.85;
+}
+
+.font-indic-tamil {
+  font-family: var(--font-geist-sans), "Noto Sans Tamil", "Kohinoor Tamil", "Latha", "Vijaya", system-ui, sans-serif;
+  line-height: 1.9;
+}
+
+.font-indic-bengali {
+  font-family: var(--font-geist-sans), "Noto Sans Bengali", "Kohinoor Bangla", "Vrinda", system-ui, sans-serif;
+  line-height: 1.85;
+}
+
+.font-indic-generic {
+  line-height: 1.8;
+}
