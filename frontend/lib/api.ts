@@ -96,6 +96,43 @@ export const api = {
     });
   },
 
+  /** Upload and parse official circular file (.pdf, .docx, .txt) */
+  async uploadFile(
+    file: File,
+    category = "Other"
+  ): Promise<{
+    doc_id: string;
+    title: string;
+    origin: string;
+    origin_ref: string;
+    raw_text: string;
+    category: string;
+    length: number;
+  }> {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("category", category);
+
+    const url = `${API_BASE}/api/upload`;
+    const res = await fetch(url, {
+      method: "POST",
+      body: formData,
+    });
+
+    if (!res.ok) {
+      throw new ApiError(res.status, `Upload failed: ${res.statusText}`);
+    }
+    return (await res.json()) as {
+      doc_id: string;
+      title: string;
+      origin: string;
+      origin_ref: string;
+      raw_text: string;
+      category: string;
+      length: number;
+    };
+  },
+
   /** Submit a new job to the pipeline */
   async createJob(doc: SourceDocument, languages: string[]): Promise<Job> {
     return request<Job>("/api/jobs", {
@@ -107,6 +144,11 @@ export const api = {
   /** Get current job details */
   async getJob(jobId: string): Promise<Job> {
     return request<Job>(`/api/jobs/${encodeURIComponent(jobId)}`);
+  },
+
+  /** Get source document ground truth for a job */
+  async getJobDocument(jobId: string): Promise<SourceDocument> {
+    return request<SourceDocument>(`/api/jobs/${encodeURIComponent(jobId)}/document`);
   },
 
   /** List recent jobs for history/analytics */

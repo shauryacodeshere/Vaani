@@ -460,3 +460,191 @@ export const MOCK_HISTORY_JOBS: Job[] = [
     error: "ExtractionError: Unparseable PDF layout in table section.",
   },
 ];
+
+// --------------------------------------------------------------------------
+// FDA Drug Recall Fixtures (Recall_Order_Text_Only.docx)
+// --------------------------------------------------------------------------
+
+export const MOCK_FDA_RECALL_DOC: SourceDocument = {
+  doc_id: "doc_recall_fda_2026",
+  title: "RECALL ORDER: Ref. No. D&CA/FDAMS/RO/804-2026/10 — FDA Maharashtra",
+  origin: "upload",
+  origin_ref: "Recall_Order_Text_Only.docx",
+  raw_text:
+    "Ref. No. D&CA/FDAMS/RO/804-2026/10. Office of the Joint Commissioner Drug (HQ) & Controlling Authority, Maharashtra Food and Drugs Administration, Bandra Kurla Complex, Mumbai. RECALL ORDER to HSN International (Sidcul, Haridwar) and M/s Cipla Pharma & Life Sciences Ltd. Immediate stop sale, recall, and quarantine of substandard drug batches. All wholesale distributors, retail chemists, and hospital pharmacies must quarantine existing stock and return to manufacturer within 7 days.",
+};
+
+export const MOCK_FDA_RECALL_FACTS: Fact[] = [
+  {
+    id: "f_fda_1",
+    claim: "Maharashtra FDA issued urgent recall order under Ref. No. D&CA/FDAMS/RO/804-2026/10.",
+    type: "name",
+    source_span: "Ref. No. D&CA/FDAMS/RO/804-2026/10. Office of the Joint Commissioner Drug (HQ) & Controlling Authority, Maharashtra Food and Drugs Administration",
+  },
+  {
+    id: "f_fda_2",
+    claim: "Substandard drug batches manufactured by HSN International (Sidcul, Haridwar) distributed via Cipla Pharma are recalled.",
+    type: "location",
+    source_span: "RECALL ORDER to HSN International (Sidcul, Haridwar) and M/s Cipla Pharma & Life Sciences Ltd.",
+  },
+  {
+    id: "f_fda_3",
+    claim: "Immediate stop sale and quarantine ordered across all retail and hospital pharmacies.",
+    type: "policy",
+    source_span: "Immediate stop sale, recall, and quarantine of substandard drug batches.",
+  },
+  {
+    id: "f_fda_4",
+    claim: "All affected stock must be quarantined and returned to the manufacturer within 7 days.",
+    type: "number",
+    source_span: "All wholesale distributors, retail chemists, and hospital pharmacies must quarantine existing stock and return to manufacturer within 7 days.",
+  },
+];
+
+export const MOCK_FDA_RECALL_EXTRACTION: ExtractionResult = {
+  doc_id: "doc_recall_fda_2026",
+  title: "Maharashtra FDA Urgent Drug Batch Recall Order 2026",
+  summary:
+    "Maharashtra Food & Drugs Administration orders immediate sales freeze, quarantine, and 7-day manufacturer return for substandard drug batches.",
+  facts: MOCK_FDA_RECALL_FACTS,
+};
+
+export const MOCK_FDA_RECALL_VERIFIED_SCRIPT: VerifiedScript = {
+  script: {
+    script_id: "scr_fda_hi_01",
+    job_id: "job_recall_fda",
+    language: "hi",
+    scenes: [
+      {
+        scene_id: "s_fda_1",
+        text: "महाराष्ट्र खाद्य एवं औषधि प्रशासन ने सिडकुल हरिद्वार स्थित एचएसएन इंटरनेशनल और सिप्ला फार्मा द्वारा वितरित दवा बैचों की तत्काल बिक्री रोकने और रिकॉल का आदेश जारी किया है।",
+        referenced_fact_ids: ["f_fda_1", "f_fda_2"],
+        visual_keywords: ["FDA Maharashtra", "Drug Recall Notice", "Public Health Alert"],
+      },
+      {
+        scene_id: "s_fda_2",
+        text: "सभी मेडिकल स्टोर और अस्पताल इस स्टॉक को तुरंत क्वारंटीन करें और सात दिनों के भीतर वापस भेजें।",
+        referenced_fact_ids: ["f_fda_3", "f_fda_4"],
+        visual_keywords: ["Quarantine Order", "Pharmacy Warning", "7 Days Deadline"],
+      },
+    ],
+  },
+  checks: [
+    {
+      claim_id: "c_fda_1",
+      claim_text: "Maharashtra FDA issued urgent recall order to HSN International and Cipla Pharma.",
+      verdict: "SUPPORTED",
+      confidence: 0.99,
+      evidence_span:
+        "Ref. No. D&CA/FDAMS/RO/804-2026/10. Office of the Joint Commissioner Drug (HQ) & Controlling Authority, Maharashtra Food and Drugs Administration",
+      evidence_fact_id: "f_fda_1",
+      attempt: 1,
+    },
+    {
+      claim_id: "c_fda_2",
+      claim_text: "Stocks must be quarantined and returned within 7 days.",
+      verdict: "SUPPORTED",
+      confidence: 0.98,
+      evidence_span:
+        "All wholesale distributors, retail chemists, and hospital pharmacies must quarantine existing stock and return to manufacturer within 7 days.",
+      evidence_fact_id: "f_fda_4",
+      attempt: 1,
+    },
+  ],
+  status: "APPROVED",
+};
+
+// --------------------------------------------------------------------------
+// NTA SWAYAM Semester Results Fixtures
+// --------------------------------------------------------------------------
+
+export const MOCK_SWAYAM_DOC: SourceDocument = {
+  doc_id: "doc_swayam_nta_2026",
+  title: "NATIONAL TESTING AGENCY (NTA) — PUBLIC NOTICE: Declaration of Results of January 2026 Semester Exams (SWAYAM)",
+  origin: "upload",
+  origin_ref: "SWAYAM_Public_Notice_Results_2026.pdf",
+  raw_text:
+    "NATIONAL TESTING AGENCY (An Autonomous Organization under the Department of Higher Education, Ministry of Education, Government of India). Helpline: +91-11-40759000, Website: www.nta.ac.in. PUBLIC NOTICE: 19 August 2026. Subject: Declaration of Results of the January 2026-Semester Exams of the courses held in Hybrid (CBT + Pen & Paper) Mode under the Study Webs of Active-Learning for Young Aspiring Minds (SWAYAM). In continuation of Public Notice dated 16 July 2026, results of 61 Courses whose Exams were conducted in Hybrid mode are now hosted on the NTA website https://swayam.nta.ac.in. Candidates can log in using their Application Number and password/date of birth to download Score Cards. The Final Score Card and Certificates will be issued by the concerned National Coordinators (IGNOU, etc.).",
+};
+
+export const MOCK_SWAYAM_FACTS: Fact[] = [
+  {
+    id: "f_swayam_1",
+    claim: "National Testing Agency (NTA) declared results for 61 Hybrid Mode courses of SWAYAM January 2026 semester exam.",
+    type: "name",
+    source_span: "Subject: Declaration of Results of the January 2026-Semester Exams of the courses held in Hybrid (CBT + Pen & Paper) Mode under the Study Webs of Active-Learning for Young Aspiring Minds (SWAYAM).",
+  },
+  {
+    id: "f_swayam_2",
+    claim: "Results and Score Cards are hosted on official NTA portal https://swayam.nta.ac.in.",
+    type: "location",
+    source_span: "results of 61 Courses whose Exams were conducted in Hybrid mode are now hosted on the NTA website https://swayam.nta.ac.in.",
+  },
+  {
+    id: "f_swayam_3",
+    claim: "Candidates must log in with their Application Number and password to access their score cards.",
+    type: "policy",
+    source_span: "Candidates can log in from the above-mentioned website using their Application Number and password/download and print their Score Cards.",
+  },
+  {
+    id: "f_swayam_4",
+    claim: "Final grade certificates will be officially issued by National Coordinators including IGNOU.",
+    type: "policy",
+    source_span: "The Final Score Card and Certificates will be issued by the concerned National Coordinators.",
+  },
+];
+
+export const MOCK_SWAYAM_EXTRACTION: ExtractionResult = {
+  doc_id: "doc_swayam_nta_2026",
+  title: "SWAYAM January 2026 Semester Exam Results Announcement",
+  summary:
+    "National Testing Agency (NTA) announces the release of January 2026 semester results for 61 hybrid courses on swayam.nta.ac.in.",
+  facts: MOCK_SWAYAM_FACTS,
+};
+
+export const MOCK_SWAYAM_VERIFIED_SCRIPT: VerifiedScript = {
+  script: {
+    script_id: "scr_swayam_hi_01",
+    job_id: "job_swayam_nta",
+    language: "hi",
+    scenes: [
+      {
+        scene_id: "s_swayam_1",
+        text: "राष्ट्रीय परीक्षा एजेंसी (एनटीए) ने स्वयं जनवरी 2026 सेमेस्टर के हाइब्रिड मोड पाठ्यक्रमों के परिणाम घोषित कर दिए हैं।",
+        referenced_fact_ids: ["f_swayam_1", "f_swayam_2"],
+        visual_keywords: ["NTA SWAYAM", "Exam Results", "Ministry of Education"],
+      },
+      {
+        scene_id: "s_swayam_2",
+        text: "अभ्यर्थी आधिकारिक वेबसाइट swayam.nta.ac.in पर जाकर अपने आवेदन संख्या और पासवर्ड से स्कोर कार्ड डाउनलोड कर सकते हैं।",
+        referenced_fact_ids: ["f_swayam_3", "f_swayam_4"],
+        visual_keywords: ["Score Card Download", "Portal Login", "IGNOU Certificate"],
+      },
+    ],
+  },
+  checks: [
+    {
+      claim_id: "c_swayam_1",
+      claim_text: "NTA declared results for SWAYAM Hybrid mode courses.",
+      verdict: "SUPPORTED",
+      confidence: 0.99,
+      evidence_span:
+        "Declaration of Results of the January 2026-Semester Exams of the courses held in Hybrid (CBT + Pen & Paper) Mode under the Study Webs of Active-Learning for Young Aspiring Minds (SWAYAM).",
+      evidence_fact_id: "f_swayam_1",
+      attempt: 1,
+    },
+    {
+      claim_id: "c_swayam_2",
+      claim_text: "Score cards available on swayam.nta.ac.in with application number and password.",
+      verdict: "SUPPORTED",
+      confidence: 0.98,
+      evidence_span:
+        "Candidates can log in from the above-mentioned website using their Application Number and password/download and print their Score Cards.",
+      evidence_fact_id: "f_swayam_3",
+      attempt: 1,
+    },
+  ],
+  status: "APPROVED",
+};
+
+
