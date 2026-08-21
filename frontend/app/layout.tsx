@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
+import { AuthProvider } from "@/lib/auth-context";
 import { Header } from "@/components/header";
+import { AdminLoginModal } from "@/components/admin-login-modal";
 import { Toaster } from "@/components/ui/sonner";
 
 const geistSans = Geist({
@@ -30,11 +32,15 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning className={`${geistSans.variable} ${geistMono.variable} h-full`}>
       <body className="min-h-full flex flex-col bg-background font-sans text-foreground antialiased selection:bg-primary/20 selection:text-primary">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-          <Header />
-          <main className="flex-1 flex flex-col">{children}</main>
-          <Toaster position="top-right" richColors />
+          <AuthProvider>
+            <Header />
+            <main className="flex-1 flex flex-col">{children}</main>
+            <AdminLoginModal />
+            <Toaster position="top-right" richColors />
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>
   );
 }
+

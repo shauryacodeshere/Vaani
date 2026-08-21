@@ -3,20 +3,44 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Radio, Sparkles, Activity, ShieldCheck, History, PlusCircle } from "lucide-react";
+import {
+  Radio,
+  Sparkles,
+  Activity,
+  ShieldCheck,
+  History,
+  PlusCircle,
+  Lock,
+  LogOut,
+  UserCheck,
+  Tv,
+  FileCheck,
+  ShieldAlert,
+} from "lucide-react";
+import { useAuth } from "@/lib/auth-context";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { BackendStatusBadge } from "@/components/backend-status-badge";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 
 export function Header() {
   const pathname = usePathname();
+  const { isAdmin, user, openLoginModal, logout } = useAuth();
 
-  const navItems = [
+  // Officer / Admin Navigation Items
+  const adminNavItems = [
     { href: "/jobs", label: "New Job", icon: PlusCircle },
     { href: "/status", label: "Live Status", icon: Activity },
     { href: "/review", label: "Review & Verify", icon: ShieldCheck },
-    { href: "/history", label: "History", icon: History },
+    { href: "/history", label: "History & Ledger", icon: History },
   ];
+
+  // Citizen / Public Navigation Items
+  const citizenNavItems = [
+    { href: "/", label: "Public Broadcast Bulletin", icon: Tv },
+  ];
+
+  const currentNavItems = isAdmin ? adminNavItems : citizenNavItems;
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -37,14 +61,14 @@ export function Header() {
                 </span>
               </div>
               <span className="text-[10px] text-muted-foreground font-mono -mt-1 hidden sm:inline">
-                Multilingual Outreach Pipeline
+                {isAdmin ? "Officer Pipeline & Verification Studio" : "Multilingual Citizen Outreach Portal"}
               </span>
             </div>
           </Link>
 
           {/* Navigation Links */}
           <nav className="hidden md:flex items-center gap-1">
-            {navItems.map((item) => {
+            {currentNavItems.map((item) => {
               const Icon = item.icon;
               const isActive = pathname === item.href || (item.href !== "/" && pathname?.startsWith(item.href));
               return (
@@ -65,14 +89,37 @@ export function Header() {
           </nav>
         </div>
 
-        {/* Right Section: Status Badge, PS Tag, Theme Toggle */}
-        <div className="flex items-center gap-3">
-          <div className="hidden lg:flex items-center">
-            <Badge variant="outline" className="text-xs font-mono py-1 px-2 text-muted-foreground bg-muted/30">
-              <Sparkles className="h-3 w-3 mr-1 text-amber-500" />
-              PS-02 Codeissance
-            </Badge>
-          </div>
+        {/* Right Section: Role Status, Login/Logout, Status Badge, Theme Toggle */}
+        <div className="flex items-center gap-2 sm:gap-3">
+          {/* Role Indicator & Action */}
+          {isAdmin ? (
+            <div className="flex items-center gap-2">
+              <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-xs font-mono font-bold">
+                <ShieldCheck className="h-3.5 w-3.5" />
+                <span>OFFICER / ADMIN</span>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={logout}
+                className="text-xs h-8 gap-1.5 text-muted-foreground hover:text-rose-500 hover:border-rose-500/40 cursor-pointer"
+              >
+                <LogOut className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Exit to Citizen View</span>
+                <span className="sm:hidden">Exit</span>
+              </Button>
+            </div>
+          ) : (
+            <Button
+              size="sm"
+              onClick={openLoginModal}
+              className="text-xs h-8 gap-1.5 bg-gradient-to-r from-primary to-indigo-600 hover:from-primary/90 hover:to-indigo-600/90 text-primary-foreground shadow-sm cursor-pointer"
+            >
+              <Lock className="h-3.5 w-3.5" />
+              <span>Admin Login</span>
+            </Button>
+          )}
+
           <BackendStatusBadge />
           <ThemeToggle />
         </div>
@@ -80,3 +127,4 @@ export function Header() {
     </header>
   );
 }
+

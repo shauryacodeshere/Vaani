@@ -235,12 +235,31 @@ async def get_job_extraction(job_id: str) -> dict[str, Any]:
     """Return extracted Grounding Facts with verbatim source spans."""
     ext = global_store.get_artifact(job_id, "extraction")
     if not ext:
-        from app.providers.mock import MOCK_FACTS
+        from app.schemas import Fact
         return {
             "doc_id": "doc_nmss_2026",
             "title": "National Merit Scholarship Scheme 2026",
             "summary": "12,000 slots opening on 1 Sept 2026 for students with >= 75% marks.",
-            "facts": [f.model_dump(mode="json") for f in MOCK_FACTS],
+            "facts": [
+                Fact(
+                    id="f1",
+                    claim="The application window for the National Merit Scholarship opens on 1 September 2026.",
+                    type="date",
+                    source_span="The application window for the National Merit Scholarship opens on 1 September 2026.",
+                ).model_dump(mode="json"),
+                Fact(
+                    id="f2",
+                    claim="Eligible students must have scored at least 75 percent in their qualifying examination.",
+                    type="number",
+                    source_span="Eligible students must have scored at least 75 percent in their qualifying examination.",
+                ).model_dump(mode="json"),
+                Fact(
+                    id="f3",
+                    claim="The total number of scholarships available this year is 12000.",
+                    type="number",
+                    source_span="The total number of scholarships available this year is 12000.",
+                ).model_dump(mode="json"),
+            ],
         }
     return ext.model_dump(mode="json")
 
