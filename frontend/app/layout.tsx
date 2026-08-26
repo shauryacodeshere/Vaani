@@ -5,6 +5,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { AuthProvider } from "@/lib/auth-context";
 import { Header } from "@/components/header";
 import { AdminLoginModal } from "@/components/admin-login-modal";
+import { CitizenChatbot } from "@/components/citizen-chatbot";
 import { Toaster } from "@/components/ui/sonner";
 
 const geistSans = Geist({
@@ -35,6 +36,7 @@ export default function RootLayout({
           <AuthProvider>
             <Header />
             <main className="flex-1 flex flex-col">{children}</main>
+            <CitizenChatbot />
             <AdminLoginModal />
             <Toaster position="top-right" richColors />
           </AuthProvider>
