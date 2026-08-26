@@ -15,6 +15,7 @@ Thumbs.db
 
 # Generated media / pipeline output
 output/
+frontend/public/videos/job_*/
 
 # Node (frontend/ — Shaurya's scaffold will add its own too)
 node_modules/
