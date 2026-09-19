@@ -1,0 +1,61 @@
+# ==============================================================================
+# VaaniReach Multi-Container Docker Compose Orchestration
+# ==============================================================================
+services:
+  # ----------------------------------------------------------------------------
+  # Backend API & Media Processing Service (FastAPI + FFmpeg)
+  # ----------------------------------------------------------------------------
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: vaanireach-backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./backend/.env
+    environment:
+      - PYTHONUNBUFFERED=1
+      - OUTPUT_ROOT=/app/output
+    volumes:
+      # Mount host output folder so rendered videos/audio persist and are directly inspectable
+      - ./backend/output:/app/output
+    networks:
+      - vaanireach-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  # ----------------------------------------------------------------------------
+  # Frontend Presentation & Review Dashboard (Next.js Standalone)
+  # ----------------------------------------------------------------------------
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        # Client-side API URL accessible from the user's browser
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+    container_name: vaanireach-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - vaanireach-net
+
+# ------------------------------------------------------------------------------
+# Isolated Bridge Network
+# ------------------------------------------------------------------------------
+networks:
+  vaanireach-net:
+    name: vaanireach-network
+    driver: bridge
