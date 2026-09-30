@@ -125,16 +125,20 @@ async def synthesize_speech(
     await tts.save(mp3_path)
 
     wav_path = str(out_path.with_suffix(".wav"))
-    subprocess.run([
-        "ffmpeg", "-y", "-loglevel", "error",
-        "-i", mp3_path,
-        "-ac", "2", "-ar", "44100",
-        wav_path
-    ], check=True)
 
-    data, samplerate = sf.read(wav_path)
-    duration = len(data) / samplerate
+    def _convert_and_read() -> float:
+        subprocess.run([
+            "ffmpeg", "-y", "-loglevel", "error",
+            "-i", mp3_path,
+            "-ac", "2", "-ar", "44100",
+            wav_path
+        ], check=True)
+        data, samplerate = sf.read(wav_path)
+        return float(len(data) / samplerate)
+
+    duration = await asyncio.to_thread(_convert_and_read)
     return duration
+
 
 
 from app.assembly.studio_graphic import render_document_studio_frame

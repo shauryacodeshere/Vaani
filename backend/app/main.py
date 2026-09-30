@@ -50,6 +50,12 @@ app.mount("/output", StaticFiles(directory=str(output_dir)), name="output")
 app.include_router(api_router)
 
 
+@app.get("/")
+async def root():
+    """Root endpoint for basic connectivity."""
+    return {"status": "ok", "service": "VaaniReach Backend"}
+
+
 @app.get("/health")
 async def health_check():
     """Service health check."""
@@ -59,6 +65,7 @@ async def health_check():
         "version": "1.0.0",
         "luma_configured": bool(settings.LUMA_API_KEY),
     }
+
 
 
 if __name__ == "__main__":
