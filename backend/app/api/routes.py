@@ -441,23 +441,51 @@ async def get_job_video(
         if public_job_cand.exists():
             video_path = public_job_cand
 
-    # 3. Check if job is a Recall / FDA notice
+    # 3. If video is not rendered yet on disk, generate tailored presenter video on-demand for this document
+    doc = stored_documents.get(job_id)
+    if not video_path and doc:
+        try:
+            from app.assembly.lip_sync import synthesize_speech, render_lip_sync_video
+            import gc
+
+            base_dir = Path(settings.OUTPUT_ROOT) / job_id / lang
+            base_dir.mkdir(parents=True, exist_ok=True)
+            f_audio = str(base_dir / f"speech_{persona}_{lang}.wav")
+            f_video = str(base_dir / f"vaanireach_{persona}_{lang}.mp4")
+
+            lines = [l.strip() for l in doc.raw_text.split("\n") if len(l.strip()) > 15]
+            doc_bullets = lines[:3] if lines else [f"Official public notice: {doc.title}"]
+            script_text = f"Official announcement regarding {doc.title}. " + " ".join(doc_bullets[:2])
+
+            await synthesize_speech(script_text, lang, f_audio, persona=persona)
+            await asyncio.to_thread(
+                render_lip_sync_video,
+                audio_path=f_audio,
+                output_video_path=f_video,
+                workdir=str(base_dir / f"lip_work_{persona}"),
+                lang=lang,
+                persona=persona,
+                doc_title=doc.title,
+                doc_category=getattr(doc, "category", "Official Public Notice"),
+                doc_department=doc.origin_ref or "Government of India",
+                doc_bullets=doc_bullets,
+            )
+            gc.collect()
+            if Path(f_video).exists():
+                video_path = Path(f_video)
+        except Exception as e:
+            logger.warning(f"On-demand video generation failed: {e}")
+
+    # 4. Known demo specific fallbacks only if explicitly a demo ID
     if not video_path:
-        doc = stored_documents.get(job_id)
-        if doc and ("recall" in doc.title.lower() or "fda" in doc.title.lower()):
+        if "swayam" in job_id.lower() or (doc and "swayam" in doc.title.lower()):
+            swayam_cand = Path("../frontend/public/videos/swayam") / f"vaanireach_{persona}_{lang}.mp4"
+            if swayam_cand.exists():
+                video_path = swayam_cand
+        elif "recall" in job_id.lower() or "fda" in job_id.lower() or (doc and ("recall" in doc.title.lower() or "fda" in doc.title.lower())):
             recall_cand = Path("../frontend/public/videos/recall") / f"vaanireach_{persona}_{lang}.mp4"
             if recall_cand.exists():
                 video_path = recall_cand
-
-    # 4. Fallback to general preview
-    if not video_path:
-        preview_candidate = Path("../frontend/public/videos") / f"vaanireach_{persona}_{lang}.mp4"
-        if preview_candidate.exists():
-            video_path = preview_candidate
-        else:
-            std_cand = Path("../frontend/public/videos") / f"vaanireach_{lang}.mp4"
-            if std_cand.exists():
-                video_path = std_cand
 
     if video_path and video_path.exists():
         return FileResponse(
@@ -467,6 +495,7 @@ async def get_job_video(
         )
 
     raise HTTPException(status_code=404, detail=f"Video for job '{job_id}' in language '{lang}' ({persona}) is still rendering.")
+
 
 
 @router.get("/api/jobs/{job_id}/subtitles")

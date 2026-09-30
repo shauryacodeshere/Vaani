@@ -805,11 +805,12 @@ function ScriptReviewPageContent() {
                 onEnded={() => setIsPlaying(false)}
                 onTimeUpdate={handleTimeUpdate}
                 onError={() => {
-                  if (videoSrc !== staticFallbackVideo) {
+                  if (videoSrc !== staticFallbackVideo && !isCustomJob) {
                     console.warn("Backend video stream failed, falling back to static preview video.");
                     setVideoSrc(staticFallbackVideo);
                   }
                 }}
+
                 className="w-full h-full object-cover"
               >
                 {useSoftSubtitles && (
