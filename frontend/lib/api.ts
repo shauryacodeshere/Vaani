@@ -26,10 +26,25 @@ export class ApiError extends Error {
   }
 }
 
-export const API_BASE = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(/\/$/, "");
+export function getApiBase(): string {
+  if (typeof window !== "undefined") {
+    const host = window.location.hostname;
+    const isLocal = host === "localhost" || host === "127.0.0.1" || host === "0.0.0.0";
+    if (!isLocal) {
+      const configured = process.env.NEXT_PUBLIC_API_URL;
+      if (!configured || configured.includes("localhost") || configured.includes("127.0.0.1")) {
+        return "https://vaani-backend-2026.onrender.com";
+      }
+    }
+  }
+  return (process.env.NEXT_PUBLIC_API_URL || "https://vaani-backend-2026.onrender.com").replace(/\/$/, "");
+}
+
+export const API_BASE = getApiBase();
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const url = `${API_BASE}${path.startsWith("/") ? path : `/${path}`}`;
+  const base = getApiBase();
+  const url = `${base}${path.startsWith("/") ? path : `/${path}`}`;
   const headers = {
     "Content-Type": "application/json",
     Accept: "application/json",

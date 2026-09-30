@@ -10,7 +10,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Job, JobStatus, Stage } from "./types";
-import { api } from "./api";
+import { api, getApiBase } from "./api";
 import { MOCK_JOB_MID_PIPELINE } from "./mock";
 
 export type ConnectionMode = "live" | "reconnecting" | "polling" | "disconnected";
@@ -25,7 +25,6 @@ export interface UseJobStatusResult {
 }
 
 const TERMINAL_STAGES: Set<Stage> = new Set(["approved", "rejected", "failed"]);
-const API_BASE = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(/\/$/, "");
 
 export function useJobStatus(jobId: string | undefined): UseJobStatusResult {
   const [status, setStatus] = useState<JobStatus | null>(null);
@@ -95,8 +94,9 @@ export function useJobStatus(jobId: string | undefined): UseJobStatusResult {
       return;
     }
 
-    const wsProtocol = typeof window !== "undefined" && window.location.protocol === "https:" ? "wss:" : "ws:";
-    const wsHost = API_BASE.replace(/^https?:\/\//, "");
+    const base = getApiBase();
+    const wsProtocol = base.startsWith("https") ? "wss:" : "ws:";
+    const wsHost = base.replace(/^https?:\/\//, "");
     const wsUrl = `${wsProtocol}//${wsHost}/ws/jobs/${encodeURIComponent(jobId)}`;
 
     try {
