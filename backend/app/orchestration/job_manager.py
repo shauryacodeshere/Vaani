@@ -156,40 +156,38 @@ class Pipeline:
 
             self.store.put_artifact(job.job_id, "verified", verified)
 
-            # L3 — media generation (Fully parallelized with asyncio.gather)
+            # L3 — media generation (Sequential per language to prevent Render 512MB RAM OOM)
             job.stage = Stage.VERIFYING
             self._advance(job, Stage.GENERATING_MEDIA)
             media = {}
 
-            async def gen_media_lang(lang: str, vs: VerifiedScript):
+            for lang, vs in verified.items():
                 self._set_lang(job, lang, "generating_media")
                 base = self.output_root / job.job_id / lang
                 base.mkdir(parents=True, exist_ok=True)
 
-                # Parallel TTS and Scene Image generation
-                tts_task = with_fallback(
+                # TTS synthesis
+                audio = await with_fallback(
                     self.tts,
                     lambda p, s=vs.script.scenes, l=lang, b=base:
                         p.synthesize(s, VoiceConfig(language=l), str(b / "narration.wav")),
                     label=f"tts[{lang}]",
                 )
 
-                async def gen_scene_img(sc):
-                    return await with_fallback(
+                # Visual scene graphics (sequential per scene)
+                images = []
+                for sc in vs.script.scenes:
+                    img = await with_fallback(
                         self.visuals,
                         lambda p, s=sc, b=base:
                             p.get_image(s, str(b / f"{s.scene_id}.png")),
                         label=f"visual[{lang}/{sc.scene_id}]",
                         degraded=None,
                     )
+                    images.append(img)
 
-                img_tasks = [gen_scene_img(sc) for sc in vs.script.scenes]
-                audio, *images = await asyncio.gather(tts_task, *img_tasks)
-                return lang, (audio, images)
+                media[lang] = (audio, images)
 
-            results = await asyncio.gather(*[gen_media_lang(lang, vs) for lang, vs in verified.items()])
-            for lang, res in results:
-                media[lang] = res
 
             # L2 — captions + assembly + tailored lip-sync video
             self._advance(job, Stage.ASSEMBLING)
