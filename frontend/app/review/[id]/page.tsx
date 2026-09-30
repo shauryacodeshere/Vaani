@@ -267,28 +267,18 @@ function ScriptReviewPageContent() {
       setVerifiedScripts({ hi: MOCK_VERIFIED_SCRIPT_ESCALATED });
       setJob({ ...MOCK_JOB_PENDING_REVIEW, job_id: "job_demo_escalated", stage: "pending_review" });
       setActiveEvidenceSpan(MOCK_VERIFIED_SCRIPT_ESCALATED.checks[0]?.evidence_span || null);
-    } else if (selectedDemoId === "job_recall_fda" || selectedDemoId.toLowerCase().includes("recall")) {
+    } else if (selectedDemoId === "job_recall_fda") {
       setSourceDoc(MOCK_FDA_RECALL_DOC);
       setExtraction(MOCK_FDA_RECALL_EXTRACTION);
       setVerifiedScripts({ hi: MOCK_FDA_RECALL_VERIFIED_SCRIPT });
       setJob({ ...MOCK_JOB_PENDING_REVIEW, job_id: "job_recall_fda", stage: "pending_review", doc_id: "doc_recall_fda_2026" });
       setActiveEvidenceSpan(MOCK_FDA_RECALL_FACTS[0]?.source_span || null);
-    } else if (
-      selectedDemoId === "job_swayam_nta" ||
-      selectedDemoId.toLowerCase().includes("swayam") ||
-      selectedDemoId.toLowerCase().includes("nta")
-    ) {
+    } else if (selectedDemoId === "job_swayam_nta") {
       setSourceDoc(MOCK_SWAYAM_DOC);
       setExtraction(MOCK_SWAYAM_EXTRACTION);
       setVerifiedScripts({ hi: MOCK_SWAYAM_VERIFIED_SCRIPT });
       setJob({ ...MOCK_JOB_PENDING_REVIEW, job_id: "job_swayam_nta", stage: "pending_review", doc_id: "doc_swayam_nta_2026" });
       setActiveEvidenceSpan(MOCK_SWAYAM_FACTS[0]?.source_span || null);
-    } else {
-      setSourceDoc(MOCK_SOURCE_DOC);
-      setExtraction(MOCK_EXTRACTION);
-      setVerifiedScripts(MOCK_VERIFIED_SCRIPTS_CLEAN);
-      setJob({ ...MOCK_JOB_PENDING_REVIEW, job_id: selectedDemoId, stage: "pending_review" });
-      setActiveEvidenceSpan(MOCK_FACTS[0]?.source_span || null);
     }
 
     // Try fetching from real backend if connected

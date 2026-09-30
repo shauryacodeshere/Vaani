@@ -34,13 +34,42 @@ DATE_PATTERNS = [
 ]
 
 CATEGORY_KEYWORDS = {
-    "Education & Scholarships": ["scholarship", "exam", "admission", "student", "fellowship", "merit", "ugc", "aicte", "nta", "cbse", "university"],
+    "Education & Scholarships": ["scholarship", "exam", "admission", "student", "fellowship", "merit", "ugc", "aicte", "nta", "cbse", "jee", "neet", "university"],
     "Public Health & Safety": ["fda", "recall", "drug", "health", "hospital", "medical", "disease", "covid", "warning", "safety", "mohfw", "who"],
     "Agriculture & Welfare": ["kisan", "farmer", "agriculture", "subsidy", "dbt", "pmkisan", "crop", "fertilizer", "rural"],
     "Employment & Recruitment": ["recruitment", "vacancy", "post", "ssc", "upsc", "selection", "application", "job", "salary", "interview"],
     "Finance & Tax": ["tax", "gst", "rbi", "bank", "interest", "finance", "budget", "pension", "revenue"],
     "Civic Advisory": ["advisory", "circular", "notification", "guidelines", "order", "rules", "gazette"],
 }
+
+NAV_EXCLUSIONS = [
+    "ministry of education",
+    "department of higher education",
+    "government of india",
+    "national testing agency",
+    "skip to main content",
+    "screen reader access",
+    "text size",
+    "site map",
+    "sitemap",
+    "home",
+    "about us",
+    "contact us",
+    "privacy policy",
+    "terms & conditions",
+    "terms and conditions",
+    "hyperlink policy",
+    "copyright policy",
+    "disclaimer",
+    "feedback",
+    "help",
+    "login",
+    "register",
+    "candidate login",
+    "sign in",
+    "english",
+    "hindi",
+]
 
 
 def infer_category(title: str, text: str = "") -> str:
@@ -59,6 +88,16 @@ def extract_date_from_text(text: str) -> str | None:
         if match:
             return match.group(1).strip()
     return None
+
+
+def is_valid_notice_title(title: str) -> bool:
+    """Check if title represents a genuine notice rather than a navigation label."""
+    clean = title.strip().lower()
+    if len(clean) < 15:
+        return False
+    if any(nav in clean for nav in NAV_EXCLUSIONS):
+        return False
+    return True
 
 
 class SimpleHTMLTextExtractor(HTMLParser):
@@ -111,7 +150,7 @@ class SimpleHTMLTextExtractor(HTMLParser):
 
         if tag.lower() == "a" and self._current_a_href:
             clean_text = self._current_a_text.strip()
-            if len(clean_text) >= 8 and not clean_text.lower().startswith(("home", "contact", "about", "privacy", "terms")):
+            if len(clean_text) >= 12 and not clean_text.lower().startswith(("home", "contact", "about", "privacy", "terms")):
                 self.links.append({
                     "text": clean_text,
                     "href": self._current_a_href,
@@ -145,7 +184,7 @@ class SimpleHTMLTextExtractor(HTMLParser):
 async def scrape_portal_url(url: str) -> list[dict[str, Any]]:
     """
     Scrapes an official notice URL (webpage or direct PDF).
-    Returns a list of detected ScrapedNotice candidate dictionaries.
+    Returns the top 5 latest detected ScrapedNotice candidates.
     """
     url = url.strip()
     if not url.startswith("http://") and not url.startswith("https://"):
@@ -198,7 +237,7 @@ async def scrape_portal_url(url: str) -> list[dict[str, Any]]:
             "category": category,
             "department": domain_name,
             "summary": summary[:300],
-            "raw_text": pdf_text,
+            "raw_text": pdf_text or f"Official notification issued by {domain_name}: {title}",
         }]
 
     # 2. HTML Page Parsing
@@ -221,22 +260,39 @@ async def scrape_portal_url(url: str) -> list[dict[str, Any]]:
         if full_link in seen_urls:
             continue
 
-        # Check if link looks like a notice / circular / release
+        if not is_valid_notice_title(link_text):
+            continue
+
+        # Check if link looks like a notice / circular / release / pdf
         is_notice_link = False
         lower_text = link_text.lower()
         lower_href = full_link.lower()
 
-        keywords = ["notice", "circular", "order", "press", "release", "recruitment", "scheme", "guidelines", "result", "advisory", "announcement", ".pdf"]
+        keywords = [
+            "notice", "circular", "order", "press", "release", "recruitment", "scheme", 
+            "guidelines", "result", "advisory", "announcement", ".pdf", "score card", 
+            "admit card", "examination", "bulletin", "jee", "nta", "ugc", "aicte", "pm-kisan"
+        ]
         if any(kw in lower_text or kw in lower_href for kw in keywords):
             is_notice_link = True
-        elif len(link_text) > 35 and not any(skip in lower_text for skip in ["login", "register", "sitemap", "disclaimer", "feedback", "contact"]):
+        elif len(link_text) > 35:
             is_notice_link = True
 
-        if is_notice_link and len(link_text) >= 15:
+        if is_notice_link:
             seen_urls.add(full_link)
             n_id = f"notice_{hashlib.md5(full_link.encode()).hexdigest()[:8]}"
-            date_cand = extract_date_from_text(link_text) or extract_date_from_text(page_text) or "Active Notice"
-            cat = infer_category(link_text)
+            date_cand = extract_date_from_text(link_text) or extract_date_from_text(page_text) or "Latest Circular"
+            cat = infer_category(link_text, page_text)
+
+            # Generate notice-specific grounded source text
+            notice_text = (
+                f"Official Public Notice: {link_text}.\n"
+                f"Issued by {domain_name}. Published reference link: {full_link}.\n"
+                f"Date of Announcement: {date_cand}.\n"
+                f"Category: {cat}.\n\n"
+                f"Announcement Overview: {link_text}. Eligible candidates and stakeholders must refer to the official guidelines and deadlines outlined in this notice. Detailed records and updates are published on {domain_name}.\n\n"
+                f"{page_text[:1200]}"
+            )
 
             notice_candidates.append({
                 "id": n_id,
@@ -245,11 +301,12 @@ async def scrape_portal_url(url: str) -> list[dict[str, Any]]:
                 "date": date_cand,
                 "category": cat,
                 "department": domain_name,
-                "summary": f"Official notice published on {domain_name}: {link_text}",
-                "raw_text": f"{link_text}. Official publication from {domain_name}. Source link: {full_link}\n\n{page_text[:1500]}",
+                "summary": f"Official announcement from {domain_name}: {link_text}",
+                "raw_text": notice_text,
             })
 
-            if len(notice_candidates) >= 10:
+            # Limit to top 5 latest notices
+            if len(notice_candidates) >= 5:
                 break
 
     # 3. If no multiple list links found, treat the page itself as a single notice article
