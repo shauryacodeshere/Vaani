@@ -7,6 +7,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from pathlib import Path
+import time
 from typing import Any
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile, WebSocket, WebSocketDisconnect
@@ -15,6 +16,7 @@ from pydantic import BaseModel
 
 from app.config import settings
 from app.ingestion.parsers import parse_file
+from app.ingestion.scraper import fetch_notice_document, scrape_portal_url
 from app.orchestration.job_manager import JobStore, Pipeline
 from app.providers import get_llm_provider, get_translation_providers, get_tts_providers, get_visual_providers
 from app.schemas import Job, JobStatus, SourceDocument, Stage
@@ -56,9 +58,63 @@ def get_pipeline() -> Pipeline:
 
 
 # --------------------------------------------------------------------------
-# 1. DOCUMENT UPLOAD & PARSE (PDF, DOCX, TXT)
+# 1. URL SCRAPER & INGESTION (PDF, DOCX, TXT, HTML PORTALS)
 # --------------------------------------------------------------------------
 
+class ScrapeRequest(BaseModel):
+    url: str
+
+
+class FetchNoticeRequest(BaseModel):
+    url: str
+    notice_id: str | None = None
+
+
+@router.post("/api/ingestion/scrape")
+async def scrape_notices_from_url(req: ScrapeRequest) -> list[dict[str, Any]]:
+    """
+    Scrapes an official public website or direct PDF URL.
+    Detects and returns all published announcements/circulars.
+    """
+    if not req.url or not req.url.strip():
+        raise HTTPException(status_code=400, detail="Target URL is required")
+    try:
+        logger.info(f"Scraping portal notices from: {req.url}")
+        notices = await scrape_portal_url(req.url)
+        if not notices:
+            raise HTTPException(status_code=404, detail="No notices could be extracted from this URL.")
+        return notices
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Scraping error for {req.url}: {e}")
+        raise HTTPException(status_code=500, detail=f"Scraper error: {e}")
+
+
+@router.post("/api/ingestion/fetch")
+async def fetch_notice_content(req: FetchNoticeRequest) -> dict[str, Any]:
+    """
+    Fetches raw text content for a specific scraped circular or notice link.
+    """
+    if not req.url or not req.url.strip():
+        raise HTTPException(status_code=400, detail="Notice URL is required")
+    try:
+        doc = await fetch_notice_document(req.url, notice_id=req.notice_id)
+        doc_id = doc.doc_id or f"doc_{len(stored_documents) + 1}"
+        stored_documents[doc_id] = doc
+        return {
+            "doc_id": doc_id,
+            "title": doc.title,
+            "origin": doc.origin,
+            "origin_ref": doc.origin_ref,
+            "raw_text": doc.raw_text,
+        }
+    except Exception as e:
+        logger.error(f"Failed to fetch notice content for {req.url}: {e}")
+        raise HTTPException(status_code=500, detail=f"Fetch error: {e}")
+
+
+@router.post("/api/ingestion/upload")
 @router.post("/api/upload")
 async def upload_document(
     file: UploadFile = File(...),
@@ -145,7 +201,13 @@ async def create_job(req: CreateJobRequest) -> dict[str, Any]:
             origin_ref="Custom Upload",
             raw_text=req.custom_text,
         )
-    else:
+    elif req.url:
+        try:
+            doc = await fetch_notice_document(req.url, notice_id=req.notice_id)
+        except Exception as e:
+            logger.warning(f"Could not fetch notice from {req.url}: {e}")
+    
+    if not doc:
         # Fallback default demo document if nothing supplied
         doc = SourceDocument(
             title="Public Notice: National Merit Scholarship Application Window 2026",

@@ -143,22 +143,17 @@ export default function JobSubmissionPage() {
         toast.success(`Detected ${results.length} official notices from portal.`);
       }
     } catch (err: unknown) {
-      // Check error type
-      let errorMessage = "Unable to connect to target URL.";
+      let errorMessage = "Unable to connect or extract notices from target URL.";
       if (err instanceof ApiError) {
         if (err.statusCode === 404) errorMessage = "Notice page not found (HTTP 404).";
-        else if (err.statusCode === 504 || err.statusCode === 408) errorMessage = "Scraper timed out while reading portal (10s limit).";
+        else if (err.statusCode === 504 || err.statusCode === 408) errorMessage = "Scraper timed out while reading portal (15s limit).";
         else if (err.message) errorMessage = err.message;
+      } else if (err instanceof Error) {
+        errorMessage = err.message;
       }
 
-      // If backend is offline, gracefully provide realistic mock fixtures so the user can test all steps seamlessly
-      console.warn("Backend scrape endpoint unavailable, falling back to mock fixtures:", errorMessage);
-      setTimeout(() => {
-        setNotices(MOCK_SCRAPED_NOTICES);
-        setSelectedNoticeId(MOCK_SCRAPED_NOTICES[0].id);
-        setCurrentStep(2);
-        toast.info("Loaded demo notices from official repository.");
-      }, 500);
+      setScrapeError(errorMessage);
+      toast.error("Failed to scrape portal", { description: errorMessage });
     } finally {
       setIsScraping(false);
     }
@@ -460,7 +455,7 @@ export default function JobSubmissionPage() {
                     <p className="text-xs text-muted-foreground leading-relaxed">
                       {scrapeError}
                     </p>
-                    <div className="pt-2 flex items-center gap-2">
+                    <div className="pt-2 flex flex-wrap items-center gap-2">
                       <Button
                         variant="outline"
                         size="sm"
@@ -469,6 +464,20 @@ export default function JobSubmissionPage() {
                       >
                         <Upload className="h-3.5 w-3.5 mr-1" />
                         Switch to Direct Document Upload
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setNotices(MOCK_SCRAPED_NOTICES);
+                          setSelectedNoticeId(MOCK_SCRAPED_NOTICES[0].id);
+                          setCurrentStep(2);
+                          toast.info("Loaded sample demo notices from repository.");
+                        }}
+                        className="text-xs text-muted-foreground hover:text-foreground"
+                      >
+                        <Sparkles className="h-3.5 w-3.5 mr-1" />
+                        Use Sample Demo Notices
                       </Button>
                     </div>
                   </div>
