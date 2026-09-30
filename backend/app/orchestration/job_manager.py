@@ -31,6 +31,7 @@ from app.schemas import (
     SourceDocument,
     Stage,
     VerifiedScript,
+    VideoResult,
     VoiceConfig,
 )
 
@@ -193,6 +194,9 @@ class Pipeline:
             # L2 — captions + assembly + tailored lip-sync video
             self._advance(job, Stage.ASSEMBLING)
             
+            # Global semaphore to ensure only one video renders at a time to prevent Render 512MB RAM OOM
+            render_semaphore = asyncio.Semaphore(1)
+
             async def assemble_single_lang(lang: str, vs: VerifiedScript):
                 self._set_lang(job, lang, "assembling")
                 audio, images = media[lang]
@@ -206,90 +210,77 @@ class Pipeline:
                     caption_builder.build_vtt, vs.script, audio, str(base / "captions.vtt")
                 )
 
-                try:
-                    from app.assembly.lip_sync import synthesize_speech, render_lip_sync_video
-                    import shutil
+                default_video_path = str(base / f"vaanireach_{lang}.mp4")
+                video_rendered = False
 
-                    full_script_text = " ".join([sc.text for sc in vs.script.scenes])
-                    doc_bullets = [f.claim for f in extraction.facts[:3]] if (extraction and extraction.facts) else None
-                    
-                    # 1. Synthesize and render primary female presenter video
-                    f_audio = str(base / f"speech_female_{lang}.wav")
-                    await synthesize_speech(full_script_text, lang, f_audio, persona="female")
-                    
-                    f_video = str(base / f"vaanireach_female_{lang}.mp4")
-                    await asyncio.to_thread(
-                        render_lip_sync_video,
-                        audio_path=f_audio,
-                        output_video_path=f_video,
-                        workdir=str(base / "lip_work_female"),
-                        lang=lang,
-                        persona="female",
-                        doc_title=doc.title,
-                        doc_category=getattr(doc, "category", "Official Public Notice"),
-                        doc_department=doc.origin_ref or "Government of India",
-                        doc_bullets=doc_bullets,
-                    )
+                async with render_semaphore:
+                    try:
+                        from app.assembly.lip_sync import synthesize_speech, render_lip_sync_video
+                        import shutil
+                        import gc
 
-                    default_video_path = str(base / f"vaanireach_{lang}.mp4")
-                    shutil.copy(f_video, default_video_path)
+                        full_script_text = " ".join([sc.text for sc in vs.script.scenes])
+                        doc_bullets = [f.claim for f in extraction.facts[:3]] if (extraction and extraction.facts) else None
+                        
+                        # 1. Synthesize and render primary female presenter video
+                        f_audio = str(base / f"speech_female_{lang}.wav")
+                        await synthesize_speech(full_script_text, lang, f_audio, persona="female")
+                        
+                        f_video = str(base / f"vaanireach_female_{lang}.mp4")
+                        await asyncio.to_thread(
+                            render_lip_sync_video,
+                            audio_path=f_audio,
+                            output_video_path=f_video,
+                            workdir=str(base / "lip_work_female"),
+                            lang=lang,
+                            persona="female",
+                            doc_title=doc.title,
+                            doc_category=getattr(doc, "category", "Official Public Notice"),
+                            doc_department=doc.origin_ref or "Government of India",
+                            doc_bullets=doc_bullets,
+                        )
 
-                    public_dir = Path("../frontend/public/videos") / job.job_id
-                    public_dir.mkdir(parents=True, exist_ok=True)
-                    shutil.copy(f_video, str(public_dir / f"vaanireach_female_{lang}.mp4"))
-                    shutil.copy(default_video_path, str(public_dir / f"vaanireach_{lang}.mp4"))
+                        shutil.copy(f_video, default_video_path)
 
-                    # 2. Render male presenter video in background task
-                    async def render_male_bg():
                         try:
-                            m_audio = str(base / f"speech_male_{lang}.wav")
-                            await synthesize_speech(full_script_text, lang, m_audio, persona="male")
-                            m_video = str(base / f"vaanireach_male_{lang}.mp4")
-                            await asyncio.to_thread(
-                                render_lip_sync_video,
-                                audio_path=m_audio,
-                                output_video_path=m_video,
-                                workdir=str(base / "lip_work_male"),
-                                lang=lang,
-                                persona="male",
-                                doc_title=doc.title,
-                                doc_category=getattr(doc, "category", "Official Public Notice"),
-                                doc_department=doc.origin_ref or "Government of India",
-                                doc_bullets=doc_bullets,
-                            )
-                            shutil.copy(m_video, str(public_dir / f"vaanireach_male_{lang}.mp4"))
-                        except Exception as m_err:
-                            log.warning("[%s] Male video bg render error: %s", job.job_id, m_err)
+                            public_dir = Path("../frontend/public/videos") / job.job_id
+                            public_dir.mkdir(parents=True, exist_ok=True)
+                            shutil.copy(f_video, str(public_dir / f"vaanireach_female_{lang}.mp4"))
+                            shutil.copy(default_video_path, str(public_dir / f"vaanireach_{lang}.mp4"))
+                        except Exception:
+                            pass
 
-                    asyncio.create_task(render_male_bg())
+                        video_rendered = True
+                        gc.collect()
 
-                except Exception as ex:
-                    log.warning("[%s] Tailored presenter video generation fallback: %s", job.job_id, ex)
-                    default_video_path = str(base / f"vaanireach_{lang}.mp4")
-                    await asyncio.to_thread(
-                        ffmpeg_pipeline.assemble,
-                        language=lang,
-                        images=images,
-                        audio=audio,
-                        captions_path=srt,
-                        workdir=str(base / "work"),
-                        out_path=default_video_path,
-                    )
+                    except Exception as ex:
+                        log.warning("[%s] Tailored presenter video generation fallback: %s", job.job_id, ex)
 
-                result = await asyncio.to_thread(
-                    ffmpeg_pipeline.assemble,
+                    if not video_rendered:
+                        await asyncio.to_thread(
+                            ffmpeg_pipeline.assemble,
+                            language=lang,
+                            images=images,
+                            audio=audio,
+                            captions_path=srt,
+                            workdir=str(base / "work"),
+                            out_path=default_video_path,
+                        )
+                        import gc
+                        gc.collect()
+
+                result = VideoResult(
                     language=lang,
-                    images=images,
-                    audio=audio,
+                    video_path=default_video_path,
                     captions_path=srt,
-                    workdir=str(base / "work"),
-                    out_path=str(base / f"vaanireach_{lang}.mp4"),
+                    duration_sec=audio.duration_sec,
                 )
                 job.videos.append(result)
                 self._set_lang(job, lang, "ready_for_review")
 
-            # Run all languages concurrently in parallel
-            await asyncio.gather(*[assemble_single_lang(lang, vs) for lang, vs in verified.items()])
+            # Run languages sequentially or through semaphore
+            for lang, vs in verified.items():
+                await assemble_single_lang(lang, vs)
 
             # L6 — human gate. Nothing is published without this.
             self._advance(job, Stage.PENDING_REVIEW)

@@ -44,7 +44,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
-import { api } from "@/lib/api";
+import { api, API_BASE } from "@/lib/api";
 import {
   ExtractionResult,
   Fact,
@@ -554,17 +554,23 @@ function ScriptReviewPageContent() {
     sourceDoc.title.toLowerCase().includes("swayam") ||
     sourceDoc.title.toLowerCase().includes("nta");
 
-  const isCustomJob =
-    selectedDemoId.startsWith("job_") &&
-    selectedDemoId !== "job_pending_03" &&
-    selectedDemoId !== "job_demo_injected" &&
-    selectedDemoId !== "job_demo_escalated" &&
-    selectedDemoId !== "job_recall_fda" &&
-    selectedDemoId !== "job_swayam_nta";
+  const isKnownDemoJob =
+    selectedDemoId === "job_approved_04" ||
+    selectedDemoId === "job_pending_03" ||
+    selectedDemoId === "job_demo_injected" ||
+    selectedDemoId === "job_demo_escalated" ||
+    selectedDemoId === "job_recall_fda" ||
+    selectedDemoId === "job_swayam_nta" ||
+    selectedDemoId === "job_active_01" ||
+    selectedDemoId === "job_active_02" ||
+    selectedDemoId === "job_queued_01" ||
+    selectedDemoId === "job_rejected_05" ||
+    selectedDemoId === "job_failed_06" ||
+    selectedDemoId === "job_3bd7182d";
 
-  const videoSrc = isCustomJob
-    ? `http://localhost:8000/api/jobs/${encodeURIComponent(selectedDemoId)}/video?lang=${selectedLang}&persona=${selectedPresenter}`
-    : isSwayamNotice
+  const isCustomJob = !isKnownDemoJob && selectedDemoId.startsWith("job_");
+
+  const staticFallbackVideo = isSwayamNotice
     ? (selectedPresenter === "male"
         ? `/videos/swayam/vaanireach_male_${selectedLang}.mp4?v=8`
         : `/videos/swayam/vaanireach_female_${selectedLang}.mp4?v=8`)
@@ -575,6 +581,16 @@ function ScriptReviewPageContent() {
     : (selectedPresenter === "male"
         ? `/videos/vaanireach_male_${selectedLang}.mp4?v=7`
         : `/videos/vaanireach_${selectedLang}.mp4?v=7`);
+
+  const initialVideoSrc = isCustomJob
+    ? `${API_BASE}/api/jobs/${encodeURIComponent(selectedDemoId)}/video?lang=${selectedLang}&persona=${selectedPresenter}`
+    : staticFallbackVideo;
+
+  const [videoSrc, setVideoSrc] = React.useState<string>(initialVideoSrc);
+
+  React.useEffect(() => {
+    setVideoSrc(initialVideoSrc);
+  }, [initialVideoSrc]);
 
   const posterSrc = isSwayamNotice
     ? (selectedPresenter === "male"
@@ -587,8 +603,8 @@ function ScriptReviewPageContent() {
     : (selectedPresenter === "male"
         ? "/assets/presenter_male.jpg"
         : "/assets/presenter_female.jpg");
-  const srtDownloadUrl = `http://localhost:8000/api/jobs/${job.job_id}/subtitles?lang=${selectedLang}&format=srt`;
-  const vttDownloadUrl = `http://localhost:8000/api/jobs/${job.job_id}/subtitles?lang=${selectedLang}&format=vtt`;
+  const srtDownloadUrl = `${API_BASE}/api/jobs/${job.job_id}/subtitles?lang=${selectedLang}&format=srt`;
+  const vttDownloadUrl = `${API_BASE}/api/jobs/${job.job_id}/subtitles?lang=${selectedLang}&format=vtt`;
 
   return (
     <div className="p-4 sm:p-6 md:p-10 max-w-7xl mx-auto space-y-6">
@@ -789,7 +805,7 @@ function ScriptReviewPageContent() {
             <div className="lg:col-span-8 bg-black rounded-xl overflow-hidden shadow-lg border border-border relative aspect-video flex items-center justify-center group">
               <video
                 ref={videoRef}
-                key={`${selectedPresenter}_${selectedLang}`}
+                key={`${selectedPresenter}_${selectedLang}_${videoSrc}`}
                 src={videoSrc}
                 poster={posterSrc}
                 controls
@@ -798,11 +814,17 @@ function ScriptReviewPageContent() {
                 onPause={() => setIsPlaying(false)}
                 onEnded={() => setIsPlaying(false)}
                 onTimeUpdate={handleTimeUpdate}
+                onError={() => {
+                  if (videoSrc !== staticFallbackVideo) {
+                    console.warn("Backend video stream failed, falling back to static preview video.");
+                    setVideoSrc(staticFallbackVideo);
+                  }
+                }}
                 className="w-full h-full object-cover"
               >
                 {useSoftSubtitles && (
                   <track
-                    src={`/api/jobs/${job.job_id}/subtitles?lang=${selectedLang}&format=vtt`}
+                    src={`${API_BASE}/api/jobs/${job.job_id}/subtitles?lang=${selectedLang}&format=vtt`}
                     kind="subtitles"
                     srcLang={selectedLang}
                     label={selectedLang.toUpperCase()}

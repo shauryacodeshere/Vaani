@@ -276,6 +276,7 @@ def render_lip_sync_video(
 
     cmd = [
         "ffmpeg", "-y",
+        "-threads", "2",
         "-f", "rawvideo",
         "-vcodec", "rawvideo",
         "-s", f"{W}x{H}",
@@ -342,6 +343,9 @@ def render_lip_sync_video(
     if proc.stdin:
         proc.stdin.close()
     proc.wait()
+
+    import gc
+    gc.collect()
 
     logger.info(f"Ultra-fast render completed: {out_file}")
     return str(out_file)
